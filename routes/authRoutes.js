@@ -7,6 +7,19 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// API to get all users
+router.get("/", async (req, res, next) => {
+  try {
+    const users = await User.find();
+    if(!users) {
+      return res.status(404).json({message: "No users found"});
+    }
+    res.status(201).json(users); 
+  } catch(error) {
+    next(error)
+  }
+})
+
 router.post("/register", async (req, res) => {
   try {
     const existingEmail = await User.findOne({ email: req.body.email });
