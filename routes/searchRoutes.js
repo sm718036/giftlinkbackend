@@ -1,23 +1,20 @@
-/*jshint esversion: 8 */
-const express = require("express");
+import express from "express";
+import Gift from "../models/gift.model.js";
+
 const router = express.Router();
-const connectToDatabase = require("../util/db");
 
 // Search for gifts
 router.get("/", async (req, res, next) => {
   try {
-    // Task 1: Connect to MongoDB
-    const db = await connectToDatabase();
-    const collection = db.collection("gifts");
     // Initialize the query object
     let query = {};
 
-    // Task 2: check if the name exists and is not empty
+    // check if the name exists and is not empty
     if (req.query.name && req.query.name.trim() !== "") {
       query.name = { $regex: req.query.name, $options: "i" }; // Using regex for partial match, case-insensitive
     }
 
-    // Task 3: Add other filters to the query
+    // Add other filters to the query
     if (req.query.category) {
       query.category = req.query.category;
     }
@@ -28,12 +25,12 @@ router.get("/", async (req, res, next) => {
       query.age_years = { $lte: parseInt(req.query.age_years) };
     }
 
-    // Task 4: Fetch filtered gifts
-    const gifts = await collection.find(query).toArray();
-    res.json(gifts);
+    // Fetch filtered gifts
+    const gifts = await Gift.find(query).toArray();
+    res.status(201).json(gifts);
   } catch (e) {
     next(e);
   }
 });
 
-module.exports = router;
+export const searchRoutes = router;
