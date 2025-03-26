@@ -12,7 +12,7 @@ router.get("/", async (req, res, next) => {
     const gifts = await collection.find({}).toArray();
     res.json(gifts);
   } catch (e) {
-    logger.console.error("oops something went wrong", e);
+    console.error("oops something went wrong", e);
     next(e);
   }
 });
