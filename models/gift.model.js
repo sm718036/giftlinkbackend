@@ -7,7 +7,6 @@ const giftSchema = new mongoose.Schema({
   },
   image: {
     type: String,
-    required: true 
   },
   description: {
     type: String,
@@ -32,7 +31,6 @@ const giftSchema = new mongoose.Schema({
   },
   zipCode: {
     type: String,
-    required: true
   },
   contactInfo: {
     type: String,

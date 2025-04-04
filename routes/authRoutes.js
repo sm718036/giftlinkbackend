@@ -2,6 +2,9 @@ import express from "express";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router = express.Router();
 
@@ -72,7 +75,6 @@ router.post("/login", async (req, res) => {
 
       const userName = theUser.firstName;
       const userEmail = theUser.email;
-
       const authtoken = jwt.sign(payload, JWT_SECRET);
       return res
         .status(200)
