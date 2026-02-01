@@ -1,22 +1,20 @@
-import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import { connectToDatabase } from "./util/db.js";
 import { giftRoutes } from "./routes/giftRoutes.js";
 import { authRoutes } from "./routes/authRoutes.js";
-import { searchRoutes } from "./routes/searchRoutes.js";
+import { appConfig } from "./config/appConfig.js";
 
 const app = express();
-dotenv.config();
-app.use("*", cors());
+app.use(
+  cors({
+    origin: appConfig.dashboardUrl,
+  })
+);
 app.use(express.json());
-const port = process.env.PORT || 3060;
+express.urlencoded({ extended: true });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: "Something went wrong" });
-});
+const port = appConfig.port || 3060;
 
 // Test Route
 app.get("/", (req, res) => {
@@ -26,10 +24,18 @@ app.get("/", (req, res) => {
 // Use Routes
 app.use("/api/gifts", giftRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/search", searchRoutes);
 
-// Start Server
-app.listen(port, async () => {
-  await connectToDatabase();
-  console.log(`Server running on port ${port}`);
-});
+// start server
+const startServer = async () => {
+  try {
+    await connectToDatabase();
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
