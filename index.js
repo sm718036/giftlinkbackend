@@ -3,6 +3,7 @@ import cors from "cors";
 import { connectToDatabase } from "./util/db.js";
 import { giftRoutes } from "./routes/giftRoutes.js";
 import { authRoutes } from "./routes/authRoutes.js";
+import { wishlistRoutes } from "./routes/wishlistRoutes.js";
 import { appConfig } from "./config/appConfig.js";
 
 const app = express();
@@ -11,8 +12,10 @@ app.use(
     origin: appConfig.dashboardUrl,
   })
 );
-app.use(express.json());
-express.urlencoded({ extended: true });
+
+// Allow larger payloads for gift images (base64)
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1smb" }));
 
 const port = appConfig.port || 3060;
 
@@ -24,6 +27,7 @@ app.get("/", (req, res) => {
 // Use Routes
 app.use("/api/gifts", giftRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 // start server
 const startServer = async () => {
