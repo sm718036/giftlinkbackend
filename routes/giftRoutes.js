@@ -1,12 +1,12 @@
 /*jshint esversion: 8 */
 import express from "express";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { authMiddleware, optionalAuth } from "../middlewares/authMiddleware.js";
 import {
   getAllGifts,
   getGiftById,
   searchGifts,
   getMyGifts,
-  createGift,
+  postNewGift,
   updateGift,
   deleteGift,
 } from "../controllers/gift.controller.js";
@@ -14,24 +14,24 @@ import {
 const router = express.Router();
 
 // Get all gifts
-router.get("/", getAllGifts);
+router.get("/", optionalAuth, getAllGifts);
 
 // Search for gifts
-router.get("/search", searchGifts);
+router.get("/search", optionalAuth, searchGifts);
 
 // Get current user's gifts
-router.get("/my", authMiddleware, getMyGifts);
+router.get("/my-gifts", authMiddleware, getMyGifts);
 
 // Create a new gift
-router.post("/", authMiddleware, createGift);
+router.post("/post-gift", authMiddleware, postNewGift);
 
 // Get a single gift by ID
 router.get("/:id", authMiddleware, getGiftById);
 
 // Update a gift
-router.patch("/:id", authMiddleware, updateGift);
+router.patch("/update/:id", authMiddleware, updateGift);
 
 // Delete a gift
-router.delete("/:id", authMiddleware, deleteGift);
+router.delete("/delete/:id", authMiddleware, deleteGift);
 
 export const giftRoutes = router;

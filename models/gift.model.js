@@ -29,7 +29,9 @@ const giftSchema = new mongoose.Schema(
     postedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required() {
+        return !this.isSample;
+      },
     },
     contactInfo: {
       type: String,
@@ -43,8 +45,19 @@ const giftSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isSample: {
+      type: Boolean,
+      default: false,
+      immutable: true,
+    },
+    sampleKey: {
+      type: String,
+      unique: true,
+      sparse: true,
+      immutable: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Gift", giftSchema);

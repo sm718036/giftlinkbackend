@@ -11,6 +11,10 @@ const router = express.Router();
 
 router.get("/", authMiddleware, getMyWishlist);
 router.post("/add", authMiddleware, addToWishlist);
-router.delete("/:giftId", authMiddleware, removeFromWishlist);
+router.delete(
+  "/remove-from-wishlist/:giftId",
+  authMiddleware,
+  removeFromWishlist
+);
 
 export const wishlistRoutes = router;

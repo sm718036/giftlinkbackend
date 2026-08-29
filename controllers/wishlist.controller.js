@@ -44,6 +44,28 @@ export const addToWishlist = async (req, res) => {
         .json({ success: false, message: "Gift not found" });
     }
 
+    if (gift.isSample) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Sample gifts are for demonstration only and cannot be claimed or saved",
+      });
+    }
+
+    if (gift.postedBy.toString() === userId) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot add your own gift to your wishlist",
+      });
+    }
+
+    if (gift.isTaken) {
+      return res.status(400).json({
+        success: false,
+        message: "This gift is no longer available",
+      });
+    }
+
     const existing = await Wishlist.findOne({ user: userId, gift: giftId });
     if (existing) {
       return res.status(200).json({

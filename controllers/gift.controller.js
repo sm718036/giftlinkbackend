@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Gift from "../models/gift.model.js";
+import Wishlist from "../models/wishlist.model.js";
 
 const allowedUpdateFields = [
   "name",
@@ -13,23 +14,31 @@ const allowedUpdateFields = [
   "isTaken",
 ];
 
+const getPagination = (currentPage, limit) => ({
+  currentPage: Math.max(parseInt(currentPage, 10) || 1, 1),
+  limit: Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100),
+});
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export const getAllGifts = async (req, res) => {
   let { currentPage, limit } = req.query;
-
+  const userId = req?.user?.id;
   try {
-    currentPage = parseInt(currentPage, 10) || 1;
-    limit = parseInt(limit, 10) || 10;
+    ({ currentPage, limit } = getPagination(currentPage, limit));
 
-    const matchStage =
-      req.user && req.user.id
+    const matchStage = [
+      { $match: { isTaken: false } },
+      ...(req.user && userId
         ? [
             {
               $match: {
-                postedBy: { $ne: new mongoose.Types.ObjectId(req.user.id) },
+                postedBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
               },
             },
           ]
-        : [];
+        : []),
+    ];
 
     const result = await Gift.aggregate([
       ...matchStage,
@@ -42,9 +51,12 @@ export const getAllGifts = async (req, res) => {
     ]);
 
     if (!result || !result[0].data.length) {
-      return res
-        .status(200)
-        .json({ success: true, message: "No gifts found", gifts: [] });
+      return res.status(200).json({
+        success: true,
+        message: "No gifts found",
+        metaData: { totalCount: 0, totalPages: 0, currentPage, limit },
+        gifts: [],
+      });
     }
 
     const totalCount = result[0].metadata[0]?.totalCount || 0;
@@ -69,17 +81,22 @@ export const getAllGifts = async (req, res) => {
 
 export const searchGifts = async (req, res) => {
   let { name, category, condition, ageInYears, currentPage, limit } = req.query;
+  const userId = req.user?.id;
   try {
-    currentPage = parseInt(currentPage, 10) || 1;
-    limit = parseInt(limit, 10) || 10;
+    ({ currentPage, limit } = getPagination(currentPage, limit));
 
-    const query = {};
-    if (name) query.name = { $regex: name, $options: "i" };
+    const query = { isTaken: false };
+    if (name)
+      query.name = { $regex: escapeRegExp(String(name)), $options: "i" };
     if (category) query.category = category;
     if (condition) query.condition = condition;
-    if (ageInYears) query.ageInYears = { $lte: parseInt(ageInYears, 10) };
-    if (req.user && req.user.id) {
-      query.postedBy = { $ne: new mongoose.Types.ObjectId(req.user.id) };
+    if (ageInYears) {
+      const parsedAge = parseInt(ageInYears, 10);
+      if (!Number.isNaN(parsedAge) && parsedAge >= 0)
+        query.ageInYears = { $lte: parsedAge };
+    }
+    if (req.user && userId) {
+      query.postedBy = { $ne: new mongoose.Types.ObjectId(String(userId)) };
     }
 
     const result = await Gift.aggregate([
@@ -93,9 +110,12 @@ export const searchGifts = async (req, res) => {
     ]);
 
     if (!result || !result[0].data.length) {
-      return res
-        .status(200)
-        .json({ success: true, message: "No gifts found", gifts: [] });
+      return res.status(200).json({
+        success: true,
+        message: "No gifts found",
+        metaData: { totalCount: 0, totalPages: 0, currentPage, limit },
+        gifts: [],
+      });
     }
 
     const totalCount = result[0].metadata[0]?.totalCount || 0;
@@ -124,16 +144,16 @@ export const getGiftById = async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res
-        .status(404)
-        .json({ success: true, message: "Invalid gift id" });
+        .status(400)
+        .json({ success: false, message: "Invalid gift id" });
     }
 
     const gift = await Gift.findById(id);
 
     if (!gift) {
       return res
-        .status(200)
-        .json({ success: true, message: "Gift not found", gift: {} });
+        .status(404)
+        .json({ success: false, message: "Gift not found" });
     }
 
     return res.status(200).json({ success: true, gift });
@@ -156,7 +176,7 @@ export const getMyGifts = async (req, res) => {
   }
 };
 
-export const createGift = async (req, res) => {
+export const postNewGift = async (req, res) => {
   try {
     const {
       name,
@@ -169,6 +189,8 @@ export const createGift = async (req, res) => {
       address,
     } = req.body;
     const postedBy = req.user.id;
+
+    const parsedAge = Number(ageInYears);
 
     if (
       !name ||
@@ -186,11 +208,20 @@ export const createGift = async (req, res) => {
       });
     }
 
+    if (!Number.isInteger(parsedAge) || parsedAge < 0) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "ageInYears must be a non-negative integer",
+        });
+    }
+
     const gift = await Gift.create({
       name,
       image,
       description,
-      ageInYears: parseInt(ageInYears, 10),
+      ageInYears: parsedAge,
       condition,
       category,
       contactInfo,
@@ -223,6 +254,13 @@ export const updateGift = async (req, res) => {
         .json({ success: false, message: "Gift not found" });
     }
 
+    if (gift.isSample) {
+      return res.status(403).json({
+        success: false,
+        message: "Sample gifts cannot be changed or claimed",
+      });
+    }
+
     if (gift.postedBy.toString() !== userId) {
       return res.status(403).json({
         success: false,
@@ -230,11 +268,21 @@ export const updateGift = async (req, res) => {
       });
     }
 
+    if (req.body.ageInYears !== undefined) {
+      const parsedAge = Number(req.body.ageInYears);
+      if (!Number.isInteger(parsedAge) || parsedAge < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "ageInYears must be a non-negative integer",
+        });
+      }
+    }
+
     const updates = {};
     allowedUpdateFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         if (field === "ageInYears") {
-          updates[field] = parseInt(req.body[field], 10);
+          updates[field] = Number(req.body[field]);
         } else {
           updates[field] = req.body[field];
         }
@@ -243,6 +291,7 @@ export const updateGift = async (req, res) => {
 
     const updatedGift = await Gift.findByIdAndUpdate(id, updates, {
       new: true,
+      runValidators: true,
     });
 
     return res.status(200).json({ success: true, gift: updatedGift });
@@ -270,6 +319,13 @@ export const deleteGift = async (req, res) => {
         .json({ success: false, message: "Gift not found" });
     }
 
+    if (gift.isSample) {
+      return res.status(403).json({
+        success: false,
+        message: "Sample gifts cannot be deleted",
+      });
+    }
+
     if (gift.postedBy.toString() !== userId) {
       return res.status(403).json({
         success: false,
@@ -277,7 +333,10 @@ export const deleteGift = async (req, res) => {
       });
     }
 
-    await Gift.findByIdAndDelete(id);
+    await Promise.all([
+      Gift.findByIdAndDelete(id),
+      Wishlist.deleteMany({ gift: id }),
+    ]);
     return res.status(200).json({ success: true, message: "Gift deleted" });
   } catch (error) {
     console.error("Error deleting gift:", error);

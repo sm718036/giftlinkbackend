@@ -23,8 +23,17 @@ export const getMe = async (req, res) => {
 export const registerNewUser = async (req, res) => {
   const { email, firstName, lastName, password } = req.body;
 
+  if (![email, firstName, lastName, password].every((value) => typeof value === "string" && value.trim())) {
+    return res.status(400).json({ success: false, message: "All fields are required" });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
   try {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -35,9 +44,9 @@ export const registerNewUser = async (req, res) => {
     const hash = await bcryptjs.hash(password, 10);
 
     await User.create({
-      email,
-      firstName,
-      lastName,
+      email: normalizedEmail,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       password: hash,
     });
 
@@ -47,14 +56,23 @@ export const registerNewUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in /register:", error);
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 export const loginExistingUser = async (req, res) => {
   const { email, password } = req.body;
+  if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
+    return res.status(400).json({ success: false, message: "Email and password are required" });
+  }
   try {
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+password");
     if (!user) {
       return res
         .status(404)
@@ -69,7 +87,7 @@ export const loginExistingUser = async (req, res) => {
     }
 
     const payload = { id: user._id.toString() };
-    const authtoken = jwt.sign(payload, JWT_SECRET);
+    const authtoken = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 
     return res.status(200).json({
       success: true,
@@ -85,11 +103,15 @@ export const loginExistingUser = async (req, res) => {
 export const updateExistingUser = async (req, res) => {
   const { firstName, lastName } = req.body;
 
+  if (![firstName, lastName].every((value) => typeof value === "string" && value.trim())) {
+    return res.status(400).json({ success: false, message: "First and last name are required" });
+  }
+
   try {
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
-      { firstName, lastName },
-      { new: true }
+      { firstName: firstName.trim(), lastName: lastName.trim() },
+      { new: true, runValidators: true }
     );
 
     if (!updatedUser) {
@@ -113,14 +135,19 @@ export const updateExistingUser = async (req, res) => {
 export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
-  if (!currentPassword || !newPassword) {
+  if (
+    typeof currentPassword !== "string" ||
+    typeof newPassword !== "string" ||
+    !currentPassword ||
+    !newPassword
+  ) {
     return res.status(400).json({
       success: false,
       message: "Current password and new password are required",
     });
   }
 
-  if (newPassword.length < 6) {
+  if (newPassword.length < 8) {
     return res.status(400).json({
       success: false,
       message: "New password must be at least 8 characters",
