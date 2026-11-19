@@ -1,20 +1,20 @@
 # GiftLink Backend
 
 ## Project Overview
-The **GiftLink** backend is responsible for handling user authentication, managing listings, storing user data, and serving API endpoints for the frontend. It is built using **Node.js, Express.js, and MongoDB** to provide a secure and scalable solution for connecting users who want to give away or receive free household items.
+The **GiftLink** backend is responsible for handling user authentication, managing listings, storing user data, and serving API endpoints for the frontend. It is built using **Node.js, Express.js, and PostgreSQL** to provide a secure and scalable solution for connecting users who want to give away or receive free household items.
 
 ## Technologies Used
 - **Node.js** – JavaScript runtime environment
 - **Express.js** – Backend framework for handling API requests
-- **MongoDB** – NoSQL database for data storage
-- **Mongoose** – ODM (Object Data Modeling) for MongoDB
+- **PostgreSQL** (v18) – Relational database for data storage
+- **pg** – PostgreSQL client for Node.js
 - **JWT (JSON Web Token)** – Authentication and authorization
 
 ## Directory Structure
 ```plaintext
  giftlink-backend/
  ├── util/                # Configuration files (DB, authentication, etc.)
- ├── models/                # Mongoose schemas/models
+ ├── models/                # PostgreSQL data-access models
  ├── routes/                # Express route handlers
  ├── .env                   # Environment variables
  ├── index.js              # Main entry point of the backend server
@@ -43,7 +43,7 @@ The **GiftLink** backend is responsible for handling user authentication, managi
 ### Prerequisites
 Ensure you have the following installed:
 - **Node.js** (v18+ recommended)
-- **MongoDB** (local or cloud instance)
+- **PostgreSQL** (v18 recommended)
 
 ### Installation Steps
 ```sh
@@ -58,6 +58,8 @@ npm install
 
 # Create a .env file and configure environment variables
 cp .env.example .env
+# Required: DATABASE_URL=postgresql://user:password@localhost:5432/giftlink
+# The tables are created automatically on the first server start.
 
 # Start the development server
 npm run dev
