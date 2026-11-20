@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "seed": "node scripts/seedDemoGifts.js",
     "test": "mocha",
     "start": "node index.js",
     "dev": "nodemon index.js"
